@@ -11,22 +11,19 @@ set(srcdir ${PROJECT_SOURCE_DIR}/../)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 # Add separate libraries for lib instances with static and dynamic memory allocation 
-add_library(${PROJECT_NAME} ${srcdir}/heatshrink_decoder.c ${srcdir}/heatshrink_encoder.c)
+add_library(${PROJECT_NAME}_noalloc ${srcdir}/heatshrink_decoder.c ${srcdir}/heatshrink_encoder.c)
 add_library(${PROJECT_NAME}_dynalloc ${srcdir}/heatshrink_decoder.c ${srcdir}/heatshrink_encoder.c)
 
-# GCC will find math library and requires to link to it. MSVC will not find anything and
-# does not need it.
-find_library(MATH_LIBRARY m)
-if(MATH_LIBRARY)
-    target_link_libraries(${PROJECT_NAME} PRIVATE ${MATH_LIBRARY})
-endif()
+# Add a default library with the same name as the project itself
+add_library(${PROJECT_NAME} INTERFACE)
+target_link_libraries(${PROJECT_NAME} INTERFACE ${PROJECT_NAME}_noalloc)
 
 # Set up downstream include paths.
-target_include_directories(${PROJECT_NAME} PUBLIC $<INSTALL_INTERFACE:include>)
+target_include_directories(${PROJECT_NAME}_noalloc PUBLIC $<INSTALL_INTERFACE:include>)
 target_include_directories(${PROJECT_NAME}_dynalloc PUBLIC $<INSTALL_INTERFACE:include>)
 
 # Set up compile definitions to produce the static and dynamic memory allocating versions
-target_compile_definitions(${PROJECT_NAME} PUBLIC HEATSHRINK_DYNAMIC_ALLOC=0)
+target_compile_definitions(${PROJECT_NAME}_noalloc PUBLIC HEATSHRINK_DYNAMIC_ALLOC=0)
 target_compile_definitions(${PROJECT_NAME}_dynalloc PUBLIC HEATSHRINK_DYNAMIC_ALLOC=1)
 
 if (UNIX) # The heatshrink executable compiles only on Unix
@@ -37,7 +34,7 @@ endif ()
 
 # Testing
 
-enable_testing()
+include(CTest)
 
 # MSVC does not support variable length arrays, and the tests don't compile
 if (NOT MSVC AND BUILD_TESTING)
@@ -64,7 +61,7 @@ write_basic_package_version_file(
 
 # Exported targets differ on various platforms. The heatshrink executable
 # is only installed on Unix platforms
-set(_exported_targets ${PROJECT_NAME} ${PROJECT_NAME}_dynalloc)
+set(_exported_targets ${PROJECT_NAME} ${PROJECT_NAME}_noalloc ${PROJECT_NAME}_dynalloc)
 if (UNIX)
   list(APPEND _exported_targets ${PROJECT_NAME}_cmd)
 endif ()

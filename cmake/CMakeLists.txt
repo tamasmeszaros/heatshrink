@@ -35,6 +35,22 @@ if (UNIX) # The heatshrink executable compiles only on Unix
   set_target_properties(${PROJECT_NAME}_cmd PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
 endif ()
 
+# Testing
+
+enable_testing()
+
+# MSVC does not support variable length arrays, and the tests don't compile
+if (NOT MSVC AND BUILD_TESTING)
+  add_executable(test_heatshrink_static ${srcdir}/test_heatshrink_static.c)
+  target_link_libraries(test_heatshrink_static heatshrink)
+
+  add_executable(test_heatshrink_dynamic ${srcdir}/test_heatshrink_dynamic.c)
+  target_link_libraries(test_heatshrink_dynamic heatshrink_dynalloc)
+
+  add_test(test_heatshrink_static test_heatshrink_static)
+  add_test(test_heatshrink_dynamic test_heatshrink_dynamic)
+endif ()
+
 # Installation and export:
 
 include(CMakePackageConfigHelpers)

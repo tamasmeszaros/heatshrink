@@ -1,5 +1,19 @@
 cmake_minimum_required(VERSION 3.10)
 
+# Path to the header file containing the version definitions
+set(VERSION_HEADER_FILE "../heatshrink_common.h")
+
+# Read the header file content
+file(READ "${VERSION_HEADER_FILE}" VERSION_CONTENT)
+
+string(REGEX MATCH "HEATSHRINK_VERSION_MAJOR[ \t]+([0-9]+)" _major_match "${VERSION_CONTENT}")
+set(HEATSHRINK_VERSION_MAJOR ${CMAKE_MATCH_1})
+string(REGEX MATCH "HEATSHRINK_VERSION_MINOR[ \t]+([0-9]+)" _minor_match "${VERSION_CONTENT}")
+set(HEATSHRINK_VERSION_MINOR ${CMAKE_MATCH_1})
+string(REGEX MATCH "HEATSHRINK_VERSION_PATCH[ \t]+([0-9]+)" _patch_match "${VERSION_CONTENT}")
+set(HEATSHRINK_VERSION_PATCH ${CMAKE_MATCH_1})
+set(HEATSHRINK_VERSION ${HEATSHRINK_VERSION_MAJOR}.${HEATSHRINK_VERSION_MINOR}.${HEATSHRINK_VERSION_PATCH})
+
 project(heatshrink C)
 
 # sources are actually one directory up
@@ -31,6 +45,12 @@ if (UNIX) # The heatshrink executable compiles only on Unix
   target_link_libraries(${PROJECT_NAME}_cmd ${PROJECT_NAME}_dynalloc)
   set_target_properties(${PROJECT_NAME}_cmd PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
 endif ()
+
+# Set up library versions. Used when shared libraries are built so that the right symlinks are created
+foreach(memtype noalloc dynalloc)
+  set_property(TARGET ${PROJECT_NAME}_${memtype} PROPERTY VERSION ${HEATSHRINK_VERSION})
+  set_property(TARGET ${PROJECT_NAME}_${memtype} PROPERTY SOVERSION ${HEATSHRINK_VERSION_MAJOR})
+endforeach()
 
 # Testing
 

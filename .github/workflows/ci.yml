@@ -1,0 +1,54 @@
+name: CMake Build Matrix
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        build-type: 
+          - Release
+          - Debug
+        lib-type: [shared, static]
+        include:
+          - os: ubuntu-latest
+            build-dir: build-unix
+          - os: windows-latest
+            build-dir: build-win
+          - os: macos-latest
+            build-dir: build-mac
+          - lib-type: shared
+            shared-libs: ON
+          - lib-type: static
+            shared-libs: OFF
+
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup CMake
+      uses: lukka/get-cmake@v3.29.3
+
+    - name: Create Build Environment
+      run: mkdir ${{ matrix.build-dir }}
+
+    - name: Configure CMake
+      run: cmake -S cmake -B ${{ matrix.build-dir }} -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=dist -DBUILD_SHARED_LIBS=${{ matrix.shared-libs }}
+      shell: bash
+
+    - name: Build
+      run: cmake --build ${{ matrix.build-dir }} --config ${{ matrix.build-type }}
+      shell: bash
+
+    - name: Run Tests
+      run: ctest -C ${{ matrix.build-type }} -V --test-dir ${{ matrix.build-dir }}
+      shell: bash
+
+    - name: Install
+      run: cmake --install ${{ matrix.build-dir }} --config ${{ matrix.build-type }}
+      shell: bash

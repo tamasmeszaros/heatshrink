@@ -25,29 +25,32 @@ set(srcdir ${PROJECT_SOURCE_DIR}/../)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 # Add separate libraries for lib instances with static and dynamic memory allocation 
-add_library(${PROJECT_NAME}_noalloc ${srcdir}/heatshrink_decoder.c ${srcdir}/heatshrink_encoder.c)
-add_library(${PROJECT_NAME}_dynalloc ${srcdir}/heatshrink_decoder.c ${srcdir}/heatshrink_encoder.c)
+add_library(${PROJECT_NAME}_static ${srcdir}/heatshrink_decoder.c ${srcdir}/heatshrink_encoder.c)
+add_library(${PROJECT_NAME}_dynamic ${srcdir}/heatshrink_decoder.c ${srcdir}/heatshrink_encoder.c)
+
+add_library(heatshrink_noalloc ALIAS heatshrink_static)
+add_library(heatshrink_dynalloc ALIAS heatshrink_dynamic)
 
 # Add a default library with the same name as the project itself
 add_library(${PROJECT_NAME} INTERFACE)
-target_link_libraries(${PROJECT_NAME} INTERFACE ${PROJECT_NAME}_noalloc)
+target_link_libraries(${PROJECT_NAME} INTERFACE ${PROJECT_NAME}_static)
 
 # Set up downstream include paths.
-target_include_directories(${PROJECT_NAME}_noalloc PUBLIC $<INSTALL_INTERFACE:include>)
-target_include_directories(${PROJECT_NAME}_dynalloc PUBLIC $<INSTALL_INTERFACE:include>)
+target_include_directories(${PROJECT_NAME}_static PUBLIC $<INSTALL_INTERFACE:include>)
+target_include_directories(${PROJECT_NAME}_dynamic PUBLIC $<INSTALL_INTERFACE:include>)
 
 # Set up compile definitions to produce the static and dynamic memory allocating versions
-target_compile_definitions(${PROJECT_NAME}_noalloc PUBLIC HEATSHRINK_DYNAMIC_ALLOC=0)
-target_compile_definitions(${PROJECT_NAME}_dynalloc PUBLIC HEATSHRINK_DYNAMIC_ALLOC=1)
+target_compile_definitions(${PROJECT_NAME}_static PUBLIC HEATSHRINK_DYNAMIC_ALLOC=0)
+target_compile_definitions(${PROJECT_NAME}_dynamic PUBLIC HEATSHRINK_DYNAMIC_ALLOC=1)
 
 if (UNIX) # The heatshrink executable compiles only on Unix
   add_executable(${PROJECT_NAME}_cmd ${srcdir}/heatshrink.c)
-  target_link_libraries(${PROJECT_NAME}_cmd ${PROJECT_NAME}_dynalloc)
+  target_link_libraries(${PROJECT_NAME}_cmd ${PROJECT_NAME}_dynamic)
   set_target_properties(${PROJECT_NAME}_cmd PROPERTIES OUTPUT_NAME ${PROJECT_NAME})
 endif ()
 
 # Set up library versions. Used when shared libraries are built so that the right symlinks are created
-foreach(memtype noalloc dynalloc)
+foreach(memtype static dynamic)
   set_property(TARGET ${PROJECT_NAME}_${memtype} PROPERTY VERSION ${HEATSHRINK_VERSION})
   set_property(TARGET ${PROJECT_NAME}_${memtype} PROPERTY SOVERSION ${HEATSHRINK_VERSION_MAJOR})
 endforeach()
@@ -62,7 +65,7 @@ if (NOT MSVC AND BUILD_TESTING)
   target_link_libraries(test_heatshrink_static heatshrink)
 
   add_executable(test_heatshrink_dynamic ${srcdir}/test_heatshrink_dynamic.c)
-  target_link_libraries(test_heatshrink_dynamic heatshrink_dynalloc)
+  target_link_libraries(test_heatshrink_dynamic heatshrink_dynamic)
 
   add_test(test_heatshrink_static test_heatshrink_static)
   add_test(test_heatshrink_dynamic test_heatshrink_dynamic)
@@ -81,7 +84,7 @@ write_basic_package_version_file(
 
 # Exported targets differ on various platforms. The heatshrink executable
 # is only installed on Unix platforms
-set(_exported_targets ${PROJECT_NAME} ${PROJECT_NAME}_noalloc ${PROJECT_NAME}_dynalloc)
+set(_exported_targets ${PROJECT_NAME} ${PROJECT_NAME}_static ${PROJECT_NAME}_dynamic)
 if (UNIX)
   list(APPEND _exported_targets ${PROJECT_NAME}_cmd)
 endif ()
